@@ -2,7 +2,6 @@
 import sys
 import argparse
 
-
 def parse_table(table_file):
 	with open(table_file, 'r') as table:
 		table_dict, chr2busco_dict = {}, {}
@@ -30,7 +29,7 @@ def parse_table(table_file):
 	return table_dict, chr2busco_dict
 
 def find_fusions_and_splits(sp1_table_dict, sp2_table_dict, sp1_chr2busco_dict, sp2_chr2busco_dict, min_proportion):
-	non_ancestral_list = []
+	non_ancestral_dict = {}
 	for sp1_chr, buscoID_list in sp1_chr2busco_dict.items():
 		sp2_chr_list = []
 		for buscoID in buscoID_list:
@@ -41,14 +40,33 @@ def find_fusions_and_splits(sp1_table_dict, sp2_table_dict, sp1_chr2busco_dict, 
 		top_sp2_chr = max(set(sp2_chr_list), key=sp2_chr_list.count)
 		proportion = sp2_chr_list.count(top_sp2_chr)/len(sp2_chr_list)
 		if not proportion > min_proportion:
-			non_ancestral_list.append(sp1_chr)
-	return(non_ancestral_list)
+			non_ancestral_dict[sp1_chr] = []
+			for sp2_chr in set(sorted(sp2_chr_list)):
+				proportion = sp2_chr_list.count(sp2_chr)/len(sp2_chr_list)
+				if proportion > 0.05:
+					non_ancestral_dict[sp1_chr].append([sp2_chr, proportion])
+	return(non_ancestral_dict)
 
-def assign_chromosomes(reference_table_dict, query_table_dict, reference_chr2busco_dict, query_chr2busco_dict, split_list, fusion_list):
+def write_fusions_and_splits_files(fusion_split_dict, prefix):
+	with open(prefix + "_chromosomes.tsv", 'w') as fusion_split_file:
+		if len(fusion_split_dict) != 0:
+			for query_chr, list in fusion_split_dict.items(): 
+				outlist = []
+				for ancestral_chr_prop in list:
+					ancestral_chr, prop = ancestral_chr_prop[0], round(ancestral_chr_prop[1], 2)
+					outlist.append(ancestral_chr + ":" + str(prop))
+				fusion_split_file.write(("%s\t%s\n") % (query_chr, ",".join(outlist)))
+			print("[+]\tSuccessfully written " + prefix + "_chromosomes.tsv")
+		else:
+			print("[+]\tWARNING: " + prefix + "_chromosomes.tsv is empty!")
+
+
+def assign_chromosomes(reference_table_dict, query_table_dict, reference_chr2busco_dict, query_chr2busco_dict, split_dict, fusion_dict):
 	with open("chromosome_assignments.tsv", "w") as chromosome_assignment_file:
+		print("[+] Assigning unfused/unsplit chromosomes to a reference chromosome...")
 		chromosome_assignment_file.write(("%s\t%s\t%s\t%s\t%s\t%s\n") % ("query_chr", "status", "assigned_ref_chr", "assigned_ref_BUSCOs", "total_BUSCOs", "prop_BUSCOs"))
 		for query_chr, buscoID_list in query_chr2busco_dict.items():
-			if not query_chr in split_list and not query_chr in fusion_list:
+			if not query_chr in split_dict and not query_chr in fusion_dict:
 				reference_chr_list = []
 				for buscoID in buscoID_list:
 					try:
@@ -59,11 +77,11 @@ def assign_chromosomes(reference_table_dict, query_table_dict, reference_chr2bus
 				assigned_ref_BUSCOs, total_BUSCOs = reference_chr_list.count(top_reference_chr), len(reference_chr_list)
 				proportion = assigned_ref_BUSCOs/total_BUSCOs
 				chromosome_assignment_file.write(("%s\t%s\t%s\t%s\t%s\t%s\n") % (query_chr, "ancestral", top_reference_chr, assigned_ref_BUSCOs, total_BUSCOs, proportion))
-			elif query_chr in split_list:
+			elif query_chr in split_dict:
 				chromosome_assignment_file.write(("%s\t%s\t%s\t%s\t%s\t%s\n") % (query_chr, "split", "-", "-", "-", "-"))
-			elif query_chr in fusion_list:
+			elif query_chr in fusion_dict:
 				chromosome_assignment_file.write(("%s\t%s\t%s\t%s\t%s\t%s\n") % (query_chr, "fusion", "-", "-", "-", "-"))
-		print("[+] Successfully written " + str(len(query_chr2busco_dict)) + " chromosomes to chromosome_assignments.tsv")
+		print("[+]\tSuccessfully written " + str(len(query_chr2busco_dict)) + " chromosomes to chromosome_assignments.tsv")
 
 if __name__ == "__main__":
 	SCRIPT = "buscopainter.py"
@@ -79,11 +97,11 @@ if __name__ == "__main__":
 	# run the functions
 	reference_table_dict, reference_chr2busco_dict = parse_table(reference_table_file)
 	query_table_dict, query_chr2busco_dict = parse_table(query_table_file)
-	split_list = find_fusions_and_splits(reference_table_dict, query_table_dict, reference_chr2busco_dict, query_chr2busco_dict, min_proportion)
-	print("[+] Identified " + str(len(split_list)) + " split chromosomes")
-	fusion_list = find_fusions_and_splits(query_table_dict, reference_table_dict, query_chr2busco_dict, reference_chr2busco_dict, min_proportion)
-	print("[+] Identified " + str(len(fusion_list)) + " fused chromosomes")
-	assign_chromosomes(reference_table_dict, query_table_dict, reference_chr2busco_dict, query_chr2busco_dict, split_list, fusion_list)
-
-#	print(split_list)
-#	print(fusion_list)
+	print("[+] Identifying fused and split chromosomes...")
+	split_dict = find_fusions_and_splits(reference_table_dict, query_table_dict, reference_chr2busco_dict, query_chr2busco_dict, min_proportion)
+	print("[+]\tIdentified " + str(len(split_dict)) + " split chromosomes")
+	write_fusions_and_splits_files(split_dict, "split")
+	fusion_dict = find_fusions_and_splits(query_table_dict, reference_table_dict, query_chr2busco_dict, reference_chr2busco_dict, min_proportion)
+	print("[+]\tIdentified " + str(len(fusion_dict)) + " fused chromosomes")
+	write_fusions_and_splits_files(fusion_dict, "fused")
+	assign_chromosomes(reference_table_dict, query_table_dict, reference_chr2busco_dict, query_chr2busco_dict, split_dict, fusion_dict)
