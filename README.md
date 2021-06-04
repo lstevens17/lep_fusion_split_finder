@@ -15,9 +15,9 @@ This will write three files:
 
 `Aglais_chromosome_assignments.tsv`: a summary of the assignments for each scaffold in the query genome
 
-`Aglais_fused_chromosomes.tsv`: a list of all fused chromosomes and their putative origins (note: any empty file is created when there are no fusion events inferred)
+`Aglais_fused_chromosomes.tsv`: a list of all fused chromosomes and their putative origins (note: an empty file is created when there are no fusion events inferred)
 
-`Aglais_split_chromosomes.tsv`: a list of all split chromosomes and their putative origins (note: any empty file is created when there are no fission events inferred)
+`Aglais_split_chromosomes.tsv`: a list of all split chromosomes and their putative origins (note: an empty file is created when there are no fission events inferred)
 
 
 ## Full usage 
