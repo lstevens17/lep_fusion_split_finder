@@ -48,7 +48,7 @@ def find_fusions_and_splits(sp1_table_dict, sp2_table_dict, sp1_chr2busco_dict, 
 						non_ancestral_dict[sp1_chr].append([sp2_chr, proportion, sp2_chr_list.count(sp2_chr)])
 		except ValueError: # for the rare case that none of the genes on an ancestral chromosome are found ANYWHERE
 			# WTF why does this happen???
-			print("[+]\tWARNING: All BUSCOs from " + sp1_chr + " are missing!")
+			print("[+]\tWARNING: All BUSCOs from " + sp1_chr + " are missing in the other species!")
 	return(non_ancestral_dict)
 
 def write_fusions_and_splits_files(fusion_split_dict, fusion_split_prefix, prefix):
@@ -94,7 +94,7 @@ def assign_chromosomes(reference_table_dict, query_table_dict, reference_chr2bus
 					top_query_chr = max(set(query_chr_list), key=query_chr_list.count)
 					reference2query_dict[reference_chr] = top_query_chr
 				except ValueError:
-					print("[+]\tWARNING: Not sure why this happens yet")
+					print("[+]\tWARNING: All BUSCOs from " + reference_chr + " are missing in the other species!")
 		# ASSIGN QUERY TO REF
 		for query_chr, buscoID_list in query_chr2busco_dict.items():
 			total_BUSCOs = len(buscoID_list) # note to self: this means the proprotion of assigned BUSCOs is relative to ALL BUSCOs, not just those that are also found in ref species
